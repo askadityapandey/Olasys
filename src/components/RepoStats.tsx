@@ -2,16 +2,24 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { fetchRepoStats } from '@/app/actions/fetchRepoStats'
+import { fetchRepoStats } from '../app/actions/fetchRepoStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart, LineChart, PieChart } from 'recharts'
+
+interface RepoStats {
+  stars: number
+  forks: number
+  languages: { name: string; percentage: number }[]
+  contributions: { author: string; commits: number }[]
+  starsOverTime: { date: string; stars: number }[]
+}
 
 export default function RepoStats() {
   const searchParams = useSearchParams()
   const repoUrl = searchParams.get('repo')
-  const [repoStats, setRepoStats] = useState(null)
+  const [repoStats, setRepoStats] = useState<RepoStats | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (repoUrl) {
