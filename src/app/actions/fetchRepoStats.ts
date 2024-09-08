@@ -1,4 +1,3 @@
-// app/actions/fetchRepoStats.ts
 'use server'
 
 import { Octokit } from '@octokit/rest'
@@ -9,19 +8,14 @@ export async function fetchRepoStats(repoUrl: string) {
   const [owner, repo] = repoUrl.split('/').slice(-2)
 
   try {
-    console.log(`Fetching data for ${owner}/${repo}`)
-    
     const [repoData, languagesData, contributorsData] = await Promise.all([
       octokit.repos.get({ owner, repo }),
       octokit.repos.listLanguages({ owner, repo }),
       octokit.repos.getContributorsStats({ owner, repo }),
     ])
 
-    console.log('Fetched repo data:', repoData.data)
-    console.log('Fetched languages data:', languagesData.data)
-    console.log('Fetched contributors data:', contributorsData.data)
-
     const starsOverTime = await fetchStarsOverTime(owner, repo)
+    const forksOverTime = await fetchForksOverTime(owner, repo)
 
     const languages = Object.entries(languagesData.data).map(([name, bytes]) => ({
       name,
@@ -44,16 +38,13 @@ export async function fetchRepoStats(repoUrl: string) {
       languages,
       contributions,
       starsOverTime,
+      forksOverTime,
     }
   } catch (error) {
-    console.error('Error in fetchRepoStats:', error)
-    if (error.response) {
-      console.error('Error response:', error.response.data)
-    }
-    throw new Error(`Failed to fetch repository statistics: ${error.message}`)
+    console.error('Error fetching repo stats:', error)
+    throw new Error('Failed to fetch repository statistics')
   }
 }
-
 
 async function fetchStarsOverTime(owner: string, repo: string) {
   try {
@@ -78,5 +69,27 @@ async function fetchStarsOverTime(owner: string, repo: string) {
     console.error('Error fetching stars over time:', error)
     return []
   }
-  
+}
+
+async function fetchForksOverTime(owner: string, repo: string) {
+  try {
+    const forks = await octokit.paginate(octokit.repos.listForks, {
+      owner,
+      repo,
+      per_page: 100,
+    })
+
+    const forksOverTime = forks.reduce((acc, fork) => {
+      const date = new Date(fork.created_at).toISOString().split('T')[0]
+      acc[date] = (acc[date] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+
+    return Object.entries(forksOverTime)
+      .map(([date, forks]) => ({ date, forks }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  } catch (error) {
+    console.error('Error fetching forks over time:', error)
+    return []
+  }
 }
