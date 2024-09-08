@@ -1,31 +1,96 @@
-// components/RepoStats.tsx
+'use client'
 
-import React from "react";
+import { useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { fetchRepoStats } from '@/app/actions/fetchRepoStats'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarChart, LineChart, PieChart } from 'recharts'
 
-interface RepoStatsProps {
-  forks: number;
-  issues: number;
-  stars: number;
-}
+export default function RepoStats() {
+  const searchParams = useSearchParams()
+  const repoUrl = searchParams.get('repo')
+  const [repoStats, setRepoStats] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-export const RepoStats: React.FC<RepoStatsProps> = ({ forks, issues, stars }) => {
+  useEffect(() => {
+    if (repoUrl) {
+      setLoading(true)
+      setError(null)
+      fetchRepoStats(repoUrl)
+        .then((data) => {
+          setRepoStats(data)
+          setLoading(false)
+        })
+        .catch((err) => {
+          setError(err.message)
+          setLoading(false)
+        })
+    }
+  }, [repoUrl])
+
+  if (!repoUrl) return null
+  if (loading) return <div>Loading...</div>
+  if (error) return <div className="text-red-500">{error}</div>
+  if (!repoStats) return null
+
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md w-full max-w-2xl mb-6">
-      <h2 className="text-lg font-bold mb-2">Repository Statistics</h2>
-      <div className="flex justify-between text-center">
-        <div className="flex flex-col items-center">
-          <span className="text-2xl font-semibold">{stars}</span>
-          <span className="text-gray-600">Stars</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-2xl font-semibold">{forks}</span>
-          <span className="text-gray-600">Forks</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-2xl font-semibold">{issues}</span>
-          <span className="text-gray-600">Open Issues</span>
-        </div>
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Stars Over Time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LineChart
+            data={repoStats.starsOverTime}
+            index="date"
+            categories={['stars']}
+            colors={['blue']}
+            yAxisWidth={40}
+          />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Language Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PieChart
+            data={repoStats.languages}
+            index="name"
+            category="percentage"
+            colors={['red', 'green', 'blue', 'yellow', 'purple']}
+          />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Forks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BarChart
+            data={[{ forks: repoStats.forks }]}
+            index="forks"
+            categories={['forks']}
+            colors={['green']}
+            yAxisWidth={40}
+          />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Contributions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BarChart
+            data={repoStats.contributions}
+            index="author"
+            categories={['commits']}
+            colors={['purple']}
+            yAxisWidth={40}
+          />
+        </CardContent>
+      </Card>
     </div>
-  );
-};
+  )
+}
