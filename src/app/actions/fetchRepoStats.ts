@@ -8,10 +8,11 @@ export async function fetchRepoStats(repoUrl: string) {
   const [owner, repo] = repoUrl.split('/').slice(-2)
 
   try {
-    const [repoData, languagesData, contributorsData] = await Promise.all([
+    const [repoData, languagesData, contributorsData, commitsData] = await Promise.all([
       octokit.repos.get({ owner, repo }),
       octokit.repos.listLanguages({ owner, repo }),
       octokit.repos.getContributorsStats({ owner, repo }),
+      octokit.repos.getCommitActivityStats({ owner, repo }),
     ])
 
     const starsOverTime = await fetchStarsOverTime(owner, repo)
@@ -32,6 +33,15 @@ export async function fetchRepoStats(repoUrl: string) {
           }))
       : []
 
+    const contributionHeatmap = commitsData.data
+      ? commitsData.data.flatMap((week) => 
+          week.days.map((count, index) => ({
+            date: new Date(week.week * 1000 + index * 86400000).toISOString().split('T')[0],
+            count,
+          }))
+        )
+      : []
+
     return {
       stars: repoData.data.stargazers_count,
       forks: repoData.data.forks_count,
@@ -39,12 +49,15 @@ export async function fetchRepoStats(repoUrl: string) {
       contributions,
       starsOverTime,
       forksOverTime,
+      contributionHeatmap,
     }
   } catch (error) {
     console.error('Error fetching repo stats:', error)
     throw new Error('Failed to fetch repository statistics')
   }
 }
+
+// ... (fetchStarsOverTime and fetchForksOverTime functions remain unchanged)
 
 async function fetchStarsOverTime(owner: string, repo: string) {
   try {

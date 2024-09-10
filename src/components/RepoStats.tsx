@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/chart"
 
 import { fetchRepoStats } from '../app/actions/fetchRepoStats'
+import ContributionHeatmap from '../components/ContributionHeatmap'
 
 interface RepoStats {
   stars: number
@@ -29,6 +30,7 @@ interface RepoStats {
   contributions: { author: string; commits: number }[]
   starsOverTime: { date: string; stars: number }[]
   forksOverTime: { date: string; forks: number }[]
+  contributionHeatmap: { date: string; count: number }[]
 }
 
 const languageColors = [
@@ -240,6 +242,8 @@ export default function RepoStats() {
           </div>
         </CardFooter>
       </Card>
+
+      <ContributionHeatmap data={repoStats.contributionHeatmap} />
     </div>
   )
 }
