@@ -8,15 +8,18 @@ export async function fetchRepoStats(repoUrl: string) {
   const [owner, repo] = repoUrl.split('/').slice(-2)
 
   try {
-    const [repoData, languagesData, contributorsData, commitsData] = await Promise.all([
+    const [repoData, languagesData, contributorsData, commitsData, contentsData] = await Promise.all([
       octokit.repos.get({ owner, repo }),
       octokit.repos.listLanguages({ owner, repo }),
       octokit.repos.getContributorsStats({ owner, repo }),
       octokit.repos.getCommitActivityStats({ owner, repo }),
+      octokit.repos.getContent({ owner, repo, path: '' }),
     ])
 
     const starsOverTime = await fetchStarsOverTime(owner, repo)
     const forksOverTime = await fetchForksOverTime(owner, repo)
+    const codeComplexity = await analyzeCodeComplexity(owner, repo, contentsData.data)
+    console.log('Code Complexity Data:', codeComplexity)
 
     const languages = Object.entries(languagesData.data).map(([name, bytes]) => ({
       name,
@@ -42,19 +45,20 @@ export async function fetchRepoStats(repoUrl: string) {
         )
       : []
 
-    return {
-      stars: repoData.data.stargazers_count,
-      forks: repoData.data.forks_count,
-      languages,
-      contributions,
-      starsOverTime,
-      forksOverTime,
-      contributionHeatmap,
+      return {
+        stars: repoData.data.stargazers_count,
+        forks: repoData.data.forks_count,
+        languages,
+        contributions,
+        starsOverTime,
+        forksOverTime,
+        contributionHeatmap,
+        codeComplexity,
+      }
+    } catch (error) {
+      console.error('Error fetching repo stats:', error)
+      throw new Error('Failed to fetch repository statistics')
     }
-  } catch (error) {
-    console.error('Error fetching repo stats:', error)
-    throw new Error('Failed to fetch repository statistics')
-  }
 }
 
 // ... (fetchStarsOverTime and fetchForksOverTime functions remain unchanged)
@@ -105,4 +109,36 @@ async function fetchForksOverTime(owner: string, repo: string) {
     console.error('Error fetching forks over time:', error)
     return []
   }
+}
+async function analyzeCodeComplexity(owner: string, repo: string, contents: any[]) {
+  const fileComplexities = await Promise.all(
+    contents
+      .filter((item: any) => item.type === 'file' && item.name.endsWith('.js'))
+      .map(async (file: any) => {
+        try {
+          const fileContent = await octokit.repos.getContent({
+            owner,
+            repo,
+            path: file.path,
+          })
+          const content = Buffer.from(fileContent.data.content, 'base64').toString('utf-8')
+          const complexity = calculateComplexity(content)
+          return { name: file.name, complexity }
+        } catch (error) {
+          console.error(`Error analyzing file ${file.name}:`, error)
+          return null
+        }
+      })
+  )
+
+  const validComplexities = fileComplexities.filter(item => item !== null)
+  console.log('Valid complexities:', validComplexities)
+
+  return validComplexities.sort((a, b) => b.complexity - a.complexity).slice(0, 10)
+}
+
+function calculateComplexity(code: string) {
+  const controlStructures = (code.match(/(if|for|while|switch|catch)/g) || []).length
+  const functions = (code.match(/function/g) || []).length
+  return controlStructures + functions
 }

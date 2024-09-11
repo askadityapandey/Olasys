@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/chart"
 
 import { fetchRepoStats } from '../app/actions/fetchRepoStats'
-import ContributionHeatmap from '../components/ContributionHeatmap'
+import ContributionHeatmap from './ContributionHeatmap'
+import CodeComplexityAnalysis from './CodeComplexityAnalysis'
 
 interface RepoStats {
   stars: number
@@ -31,6 +32,7 @@ interface RepoStats {
   starsOverTime: { date: string; stars: number }[]
   forksOverTime: { date: string; forks: number }[]
   contributionHeatmap: { date: string; count: number }[]
+  codeComplexity: { name: string; complexity: number }[]
 }
 
 const languageColors = [
@@ -244,6 +246,8 @@ export default function RepoStats() {
       </Card>
 
       <ContributionHeatmap data={repoStats.contributionHeatmap} />
+
+      <CodeComplexityAnalysis data={repoStats.codeComplexity} />
     </div>
   )
 }
