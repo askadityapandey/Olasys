@@ -1,9 +1,19 @@
-'use client'
+"use client";
 
-import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { TrendingUp, GitForkIcon, Users, Star } from "lucide-react"
-import { Label, Pie, PieChart, Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts"
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { TrendingUp, GitForkIcon, Users, Star } from "lucide-react";
+import {
+  Label,
+  Pie,
+  PieChart,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 
 import {
   Card,
@@ -12,27 +22,34 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart"
+} from "@/components/ui/chart";
 
-import { fetchRepoStats } from '../app/actions/fetchRepoStats'
-import ContributionHeatmap from './ContributionHeatmap'
-import CodeComplexityAnalysis from './CodeComplexityAnalysis'
+import { fetchRepoStats } from "@/app/actions/fetchRepoStats";
+import ContributionHeatmap from "./ContributionHeatmap";
+import CodeComplexityAnalysis from "./CodeComplexityAnalysis";
+import PullRequestStats from "./PullRequestStats";
 
 interface RepoStats {
-  stars: number
-  forks: number
-  languages: { name: string; percentage: number }[]
-  contributions: { author: string; commits: number }[]
-  starsOverTime: { date: string; stars: number }[]
-  forksOverTime: { date: string; forks: number }[]
-  contributionHeatmap: { date: string; count: number }[]
-  codeComplexity: { name: string; complexity: number }[]
+  stars: number;
+  forks: number;
+  languages: { name: string; percentage: number }[];
+  contributions: { author: string; commits: number }[];
+  starsOverTime: { date: string; stars: number }[];
+  forksOverTime: { date: string; forks: number }[];
+  contributionHeatmap: { date: string; count: number }[];
+  codeComplexity: { name: string; complexity: number }[];
+  pullRequests: {
+    total: number;
+    open: number;
+    closed: number;
+    mergeTime: number;
+  };
 }
 
 const languageColors = [
@@ -41,63 +58,66 @@ const languageColors = [
   "hsl(var(--chart-3))",
   "hsl(var(--chart-4))",
   "hsl(var(--chart-5))",
-]
+];
 
 export default function RepoStats() {
-  const searchParams = useSearchParams()
-  const repoUrl = searchParams.get('repo')
-  const [repoStats, setRepoStats] = useState<RepoStats | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const searchParams = useSearchParams();
+  const repoUrl = searchParams.get("repo");
+  const [repoStats, setRepoStats] = useState<RepoStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (repoUrl) {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       fetchRepoStats(repoUrl)
         .then((data) => {
-          setRepoStats(data)
-          setLoading(false)
+          setRepoStats(data);
+          setLoading(false);
         })
         .catch((err) => {
-          setError(err.message)
-          setLoading(false)
-        })
+          setError(err.message);
+          setLoading(false);
+        });
     }
-  }, [repoUrl])
+  }, [repoUrl]);
 
-  if (!repoUrl) return null
-  if (loading) return <div>Loading...</div>
-  if (error) return <div className="text-red-500">{error}</div>
-  if (!repoStats) return null
+  if (!repoUrl) return null;
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
+  if (!repoStats) return null;
 
   const languageChartData = repoStats.languages.map((lang, index) => ({
     name: lang.name,
     value: lang.percentage,
     fill: languageColors[index % languageColors.length],
-  }))
+  }));
 
-  const languageChartConfig = repoStats.languages.reduce((config, lang, index) => {
-    config[lang.name] = {
-      label: lang.name,
-      color: languageColors[index % languageColors.length],
-    }
-    return config
-  }, {} as ChartConfig)
+  const languageChartConfig = repoStats.languages.reduce(
+    (config, lang, index) => {
+      config[lang.name] = {
+        label: lang.name,
+        color: languageColors[index % languageColors.length],
+      };
+      return config;
+    },
+    {} as ChartConfig
+  );
 
   const starsChartConfig = {
     stars: {
       label: "Stars",
       color: "hsl(var(--chart-1))",
     },
-  } as ChartConfig
+  } as ChartConfig;
 
   const forksChartConfig = {
     forks: {
       label: "Forks",
       color: "hsl(var(--chart-2))",
     },
-  } as ChartConfig
+  } as ChartConfig;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -147,7 +167,7 @@ export default function RepoStats() {
                             Languages
                           </tspan>
                         </text>
-                      )
+                      );
                     }
                   }}
                 />
@@ -168,15 +188,30 @@ export default function RepoStats() {
               margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+              <XAxis
+                dataKey="date"
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en-US", {
+                    month: "short",
+                    year: "2-digit",
+                  })
+                }
               />
               <YAxis />
-              <Tooltip 
-                labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              <Tooltip
+                labelFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                  })
+                }
               />
-              <Area type="monotone" dataKey="stars" stroke="#8884d8" fill="#8884d8" />
+              <Area
+                type="monotone"
+                dataKey="stars"
+                stroke="#8884d8"
+                fill="#8884d8"
+              />
             </AreaChart>
           </ChartContainer>
         </CardContent>
@@ -203,15 +238,30 @@ export default function RepoStats() {
               margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+              <XAxis
+                dataKey="date"
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en-US", {
+                    month: "short",
+                    year: "2-digit",
+                  })
+                }
               />
               <YAxis />
-              <Tooltip 
-                labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              <Tooltip
+                labelFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                  })
+                }
               />
-              <Area type="monotone" dataKey="forks" stroke="#82ca9d" fill="#82ca9d" />
+              <Area
+                type="monotone"
+                dataKey="forks"
+                stroke="#82ca9d"
+                fill="#82ca9d"
+              />
             </AreaChart>
           </ChartContainer>
         </CardContent>
@@ -232,7 +282,9 @@ export default function RepoStats() {
             {repoStats.contributions.slice(0, 5).map((contributor, index) => (
               <li key={index} className="flex justify-between items-center">
                 <span>{contributor.author}</span>
-                <span className="font-semibold">{contributor.commits} commits</span>
+                <span className="font-semibold">
+                  {contributor.commits} commits
+                </span>
               </li>
             ))}
           </ul>
@@ -248,6 +300,8 @@ export default function RepoStats() {
       <ContributionHeatmap data={repoStats.contributionHeatmap} />
 
       <CodeComplexityAnalysis data={repoStats.codeComplexity} />
+
+      <PullRequestStats data={repoStats.pullRequests} />
     </div>
-  )
+  );
 }
